@@ -78,7 +78,7 @@ export const reorderDeckBasedOnFeedback = (
         const appliesToPlayer = currentPlayerName ? card.text.startsWith(currentPlayerName) : true;
 
         if (appliesToPlayer) {
-            const cardKeywords = extractKeywords(card.text);
+            // Unused variable removed here to fix build
             keywords.forEach(kw => {
                 if (card.text.includes(kw)) {
                     score += weightModifier * 10; // Base weight for a match

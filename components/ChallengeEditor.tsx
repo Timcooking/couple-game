@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { getChallenges, saveChallenges, resetChallenges, defaultChallenges } from '../services/geminiService';
+import { getChallenges, saveChallenges, resetChallenges } from '../services/geminiService';
 import type { Level, Mode } from '../types';
 import { LEVEL_DETAILS } from '../types';
 
