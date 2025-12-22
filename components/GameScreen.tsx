@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { AnimatePresence, motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
-import { getPersonalizedDeck, reorderDeckBasedOnFeedback, type Challenge } from '../services/geminiService';
+import { AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion';
+import { getPersonalizedDeck, reorderDeckBasedOnFeedback, generateAIChallenges, type Challenge } from '../services/geminiService';
 import type { Level, Players, Mode } from '../types';
 import { LEVEL_DETAILS } from '../types';
 import ChallengeCard from './ChallengeCard';
@@ -49,6 +49,69 @@ const findSuitableCardIndex = (deck: Challenge[], otherPlayerName: string): numb
     return idx === -1 ? 0 : idx; 
 };
 
+// --- Sub-component for individual cards in the fan ---
+const FanCard: React.FC<{ index: number; x: any; borderColor: string }> = ({ index, x, borderColor }) => {
+    // Calculate offset from center (index 4)
+    const offset = index - 4; 
+    
+    // Base rotation to form the fan shape
+    const baseRotate = offset * 8;
+    
+    // Parallax Rotation:
+    // When dragging x (left/right), modify rotation. 
+    // Outer cards rotate slightly more/less than inner cards to create a "loosening fan" feel.
+    // Damping: Divide x by a large number so the rotation isn't too wild.
+    const rotate = useTransform(
+        x, 
+        [-200, 200], 
+        [baseRotate - 10 - (offset * 1), baseRotate + 10 + (offset * 1)]
+    );
+
+    // Parallax Y-axis:
+    // When dragging, cards might bow slightly.
+    const yDragOffset = useTransform(x, [-200, 0, 200], [Math.abs(offset) * 2, 0, Math.abs(offset) * 2]);
+
+    // Randomize floating animation so they don't move in perfect sync
+    // Using useMemo to generate these once per mount
+    const randomDuration = useMemo(() => 2.5 + Math.random() * 2, []); // Between 2.5s and 4.5s
+    const randomDelay = useMemo(() => Math.random() * -2, []); // Random start time
+    const floatingY = Math.abs(offset) * 6; // Base Y position (arch shape)
+
+    return (
+        <motion.div
+            className={`absolute w-40 h-52 md:w-64 md:h-80 bg-black/40 border-2 ${borderColor} rounded-2xl shadow-lg flex items-center justify-center backdrop-blur-sm transition-colors duration-500 cursor-grab active:cursor-grabbing`}
+            style={{ 
+                originX: '50%', 
+                originY: '200%', // Pivot point way below the card to simulate holding a hand of cards
+                backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)',
+                backgroundSize: '10px 10px',
+                rotate: rotate,
+                y: yDragOffset,
+                zIndex: 10 + Math.abs(offset) * -1 // Center cards on top
+            }}
+            animate={{
+                // Floating animation: move up and down slightly around the base Y
+                y: [floatingY, floatingY - 12, floatingY],
+            }}
+            transition={{
+                y: {
+                    duration: randomDuration,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: randomDelay
+                }
+            }}
+            whileHover={{
+                scale: 1.1,
+                zIndex: 50,
+                y: floatingY - 30, // Pop up on hover
+                transition: { duration: 0.2 }
+            }}
+        />
+    );
+};
+
+
 const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChangeLevel }) => {
   const [truthDeck, setTruthDeck] = useState(() => getPersonalizedDeck(level, players, 'truth'));
   const [dareDeck, setDareDeck] = useState(() => getPersonalizedDeck(level, players, 'dare'));
@@ -57,6 +120,11 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
   const [isSelecting, setIsSelecting] = useState<Mode | null>(null);
   const [showLevelUpPrompt, setShowLevelUpPrompt] = useState(false);
   const [promptShown, setPromptShown] = useState(false);
+  
+  // Empty Deck Handling
+  const [emptyDeckMode, setEmptyDeckMode] = useState<Mode | null>(null);
+  const [aiKeyword, setAiKeyword] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   
   // Reward System State
   const [playerCompletedCounts, setPlayerCompletedCounts] = useState<Record<string, number>>({
@@ -81,12 +149,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
   // Get current level style details
   const { borderColor } = LEVEL_DETAILS[level];
 
-  // Animation values for the fan
+  // Motion value for the fan interaction
   const x = useMotionValue(0);
-  // Map drag x to rotation: dragging 200px rotates 30 degrees
-  const rotateInput = useTransform(x, [-200, 200], [-30, 30]);
-  const rotate = useSpring(rotateInput, { stiffness: 400, damping: 30 });
-
 
   useEffect(() => {
     // Turn 10 (5 rounds each): Show optional prompt.
@@ -140,14 +204,11 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
     setTimeout(() => {
         let deck = mode === 'truth' ? truthDeck : dareDeck;
         
-        // Auto-refill if empty
+        // Check if deck is empty
         if (deck.length === 0) {
-            deck = getPersonalizedDeck(level, players, mode);
-        }
-        
-        if (deck.length === 0) {
-             setIsSelecting(null); 
-             return;
+            setEmptyDeckMode(mode);
+            setIsSelecting(null);
+            return;
         }
 
         const otherPlayer = turn % 2 === 0 ? players.player2 : players.player1;
@@ -166,6 +227,39 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
         const { text, duration } = parseChallenge(drawnCard.text);
         setCurrentChallenge({ mode: drawnCard.mode, text, duration });
     }, 600); // Slightly longer for the exit animation
+  };
+
+  const handleShuffleDeck = () => {
+      if (!emptyDeckMode) return;
+      const newDeck = getPersonalizedDeck(level, players, emptyDeckMode);
+      if (emptyDeckMode === 'truth') setTruthDeck(newDeck);
+      else setDareDeck(newDeck);
+      setEmptyDeckMode(null);
+      // Automatically select after shuffle
+      selectChallenge(emptyDeckMode);
+  };
+
+  const handleAIGenerate = async () => {
+      if (!emptyDeckMode) return;
+      setIsGeneratingAI(true);
+      try {
+          const newCards = await generateAIChallenges(level, emptyDeckMode, players, aiKeyword);
+          if (newCards.length > 0) {
+              if (emptyDeckMode === 'truth') setTruthDeck(newCards);
+              else setDareDeck(newCards);
+              setEmptyDeckMode(null);
+              setAiKeyword('');
+              // Automatically select first card
+              selectChallenge(emptyDeckMode);
+          } else {
+              alert("AI 生成失败，请检查网络或重试。");
+          }
+      } catch (e) {
+          console.error(e);
+          alert("发生错误，请重试。");
+      } finally {
+          setIsGeneratingAI(false);
+      }
   };
 
   const handleReroll = () => {
@@ -369,39 +463,19 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
                     {/* Rotatable Fan Container - Hide if penalty active */}
                     {!activePenalty && (
                         <motion.div 
-                            className="relative w-full h-48 md:h-80 flex items-center justify-center"
-                            style={{ x, rotate }}
+                            className="relative w-full h-48 md:h-80 flex items-center justify-center cursor-grab active:cursor-grabbing"
+                            style={{ x }}
                             drag="x"
                             dragConstraints={{ left: 0, right: 0 }}
-                            dragElastic={0.1}
+                            dragElastic={0.2}
                         >
                             {Array.from({ length: 9 }).map((_, i) => (
-                            <motion.div
-                                key={i}
-                                className={`absolute w-40 h-52 md:w-64 md:h-80 bg-black/40 border-2 ${borderColor} rounded-2xl shadow-lg flex items-center justify-center backdrop-blur-sm transition-colors duration-1000`}
-                                style={{ 
-                                originX: '50%', 
-                                originY: '200%', // Pivot point lower
-                                backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)',
-                                backgroundSize: '10px 10px',
-                                }}
-                                initial={{
-                                rotate: (i - 4) * 10,
-                                y: Math.abs(i - 4) * 5,
-                                }}
-                                animate={{
-                                    rotate: (i - 4) * 10,
-                                    y: Math.abs(i - 4) * 5,
-                                    scale: [1, 1.02, 1],
-                                }}
-                                transition={{
-                                    scale: {
-                                        duration: 3,
-                                        repeat: Infinity,
-                                        delay: i * 0.1
-                                    }
-                                }}
-                            />
+                                <FanCard 
+                                    key={i} 
+                                    index={i} 
+                                    x={x} 
+                                    borderColor={borderColor} 
+                                />
                             ))}
                         </motion.div>
                     )}
@@ -409,18 +483,18 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
                     {/* Static Buttons below the fan */}
                     {!activePenalty ? (
                         <motion.div 
-                            className="flex gap-4 md:gap-8 relative z-10 mt-8 md:mt-16"
+                            className="flex gap-4 md:gap-8 relative z-10 mt-8 md:mt-16 pointer-events-none"
                         >
                             <button
                                 onClick={() => selectChallenge('truth')}
-                                className={`group flex flex-col items-center gap-1 md:gap-2 px-6 py-3 md:px-10 md:py-4 bg-black/40 hover:bg-black/60 text-white font-bold text-lg md:text-xl rounded-xl border-2 ${borderColor} transition-all duration-300 ease-in-out backdrop-blur-sm`}
+                                className={`group pointer-events-auto flex flex-col items-center gap-1 md:gap-2 px-6 py-3 md:px-10 md:py-4 bg-black/40 hover:bg-black/60 text-white font-bold text-lg md:text-xl rounded-xl border-2 ${borderColor} transition-all duration-300 ease-in-out backdrop-blur-sm shadow-xl`}
                             >
                                 <HeartIcon className="w-6 h-6 md:w-8 md:h-8 text-pink-400/60 group-hover:text-pink-400 transition-colors" />
                                 真心话
                             </button>
                             <button
                                 onClick={() => selectChallenge('dare')}
-                                className={`group flex flex-col items-center gap-1 md:gap-2 px-6 py-3 md:px-10 md:py-4 bg-black/40 hover:bg-black/60 text-white font-bold text-lg md:text-xl rounded-xl border-2 ${borderColor} transition-all duration-300 ease-in-out backdrop-blur-sm`}
+                                className={`group pointer-events-auto flex flex-col items-center gap-1 md:gap-2 px-6 py-3 md:px-10 md:py-4 bg-black/40 hover:bg-black/60 text-white font-bold text-lg md:text-xl rounded-xl border-2 ${borderColor} transition-all duration-300 ease-in-out backdrop-blur-sm shadow-xl`}
                             >
                                 <FireIcon className="w-6 h-6 md:w-8 md:h-8 text-purple-400/60 group-hover:text-purple-400 transition-colors" />
                                 大冒险
@@ -439,7 +513,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
                 </motion.div>
                 ) : null }
 
-                {isSelecting && !currentChallenge && (
+                {isSelecting && !currentChallenge && !emptyDeckMode && (
                 <motion.div
                     key="shuffling"
                     className="w-full h-full absolute inset-0 flex items-center justify-center pointer-events-none"
@@ -528,6 +602,87 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
             </AnimatePresence>
         </div>
       </div>
+
+      {/* Empty Deck Modal */}
+      <AnimatePresence>
+          {emptyDeckMode && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+              >
+                  <motion.div
+                    initial={{ scale: 0.9, y: 20 }}
+                    animate={{ scale: 1, y: 0 }}
+                    exit={{ scale: 0.9, y: 20 }}
+                    className="bg-gray-900 w-full max-w-md p-6 rounded-2xl border-2 border-gray-700 shadow-2xl relative"
+                  >
+                       <h3 className="text-2xl font-bold text-center text-white mb-2">
+                          卡牌用光了!
+                      </h3>
+                      <p className="text-white/60 text-center mb-6 text-sm">
+                          当前的 {emptyDeckMode === 'truth' ? '真心话' : '大冒险'} 题库已耗尽。
+                      </p>
+
+                      {!isGeneratingAI ? (
+                          <div className="space-y-4">
+                              <button
+                                onClick={handleShuffleDeck}
+                                className="w-full py-4 rounded-xl bg-gray-800 border border-gray-600 hover:bg-gray-700 transition-all flex items-center justify-center gap-3 group"
+                              >
+                                  <RefreshIcon className="w-5 h-5 text-gray-400 group-hover:rotate-180 transition-transform duration-500" />
+                                  <div className="text-left">
+                                      <div className="font-bold text-white">重新洗牌</div>
+                                      <div className="text-xs text-white/50">使用原有题库继续游戏</div>
+                                  </div>
+                              </button>
+
+                              <div className="relative group rounded-xl bg-gradient-to-r from-purple-900/40 to-pink-900/40 border border-purple-500/30 p-1">
+                                  <div className="bg-gray-900/90 rounded-lg p-4">
+                                      <div className="flex items-center gap-2 mb-3">
+                                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-purple-400">
+                                                <path fillRule="evenodd" d="M9 4.5a.75.75 0 0 1 .721.544l.813 2.846a3.75 3.75 0 0 0 2.576 2.576l2.846.813a.75.75 0 0 1 0 1.442l-2.846.813a3.75 3.75 0 0 0-2.576 2.576l-.813 2.846a.75.75 0 0 1-1.442 0l-.813-2.846a3.75 3.75 0 0 0-2.576-2.576l-2.846-.813a.75.75 0 0 1 0-1.442l2.846-.813a3.75 3.75 0 0 0 2.576-2.576l.813-2.846A.75.75 0 0 1 9 4.5ZM18 1.5a.75.75 0 0 1 .728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 0 1 0 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 0 1-1.456 0l-.258-1.036a2.625 2.625 0 0 0-1.91-1.91l-1.036-.258a.75.75 0 0 1 0-1.456l1.036-.258a2.625 2.625 0 0 0 1.91-1.91l.258-1.036A.75.75 0 0 1 18 1.5Z" clipRule="evenodd" />
+                                            </svg>
+                                          <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-pink-300">AI 生成新卡牌</span>
+                                      </div>
+                                      
+                                      <input 
+                                        type="text" 
+                                        value={aiKeyword}
+                                        onChange={(e) => setAiKeyword(e.target.value)}
+                                        placeholder="例如：厨房、浪漫、回忆 (可选)"
+                                        className="w-full bg-black/50 border border-white/10 rounded-lg p-2 text-sm text-white placeholder-white/30 focus:border-purple-500 outline-none mb-3"
+                                      />
+                                      
+                                      <button
+                                        onClick={handleAIGenerate}
+                                        className="w-full py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg font-bold text-white shadow-lg transition-all"
+                                      >
+                                          ✨ 生成 (AI)
+                                      </button>
+                                  </div>
+                              </div>
+                              <button
+                                onClick={() => setEmptyDeckMode(null)}
+                                className="w-full py-2 text-white/40 hover:text-white text-sm"
+                              >
+                                  取消
+                              </button>
+                          </div>
+                      ) : (
+                          <div className="flex flex-col items-center justify-center py-8">
+                               <div className="relative w-16 h-16 mb-4">
+                                   <div className="absolute inset-0 border-4 border-purple-500/20 rounded-full"></div>
+                                   <div className="absolute inset-0 border-4 border-t-purple-500 rounded-full animate-spin"></div>
+                               </div>
+                               <p className="text-purple-300 animate-pulse">AI 正在构思坏点子...</p>
+                          </div>
+                      )}
+                  </motion.div>
+              </motion.div>
+          )}
+      </AnimatePresence>
 
       {/* Reward Selection Modal */}
       <AnimatePresence>

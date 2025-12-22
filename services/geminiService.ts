@@ -1,5 +1,6 @@
 
 import type { Level, Mode, Players } from '../types';
+import { GoogleGenAI, Type } from "@google/genai";
 
 export interface Challenge {
     text: string;
@@ -7,6 +8,20 @@ export interface Challenge {
 }
 
 const STORAGE_KEY = 'couples_truth_dare_challenges';
+
+// --- Helper: Personalize Text ---
+// Replaces placeholders with actual player names based on roles.
+export const personalizeText = (text: string, players: Players): string => {
+    const { player1, player2 } = players;
+    const topPlayer = player1.role === 'top' ? player1 : player2;
+    const bottomPlayer = player1.role === 'bottom' ? player1 : player2;
+
+    return text
+        .replace(/\{\{player1\}\}/g, player1.name)
+        .replace(/\{\{player2\}\}/g, player2.name)
+        .replace(/\{\{topPlayer\}\}/g, topPlayer.name)
+        .replace(/\{\{bottomPlayer\}\}/g, bottomPlayer.name);
+};
 
 export const getChallenges = (): Record<Level, Record<Mode, string[]>> => {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -78,7 +93,6 @@ export const reorderDeckBasedOnFeedback = (
         const appliesToPlayer = currentPlayerName ? card.text.startsWith(currentPlayerName) : true;
 
         if (appliesToPlayer) {
-            // Unused variable removed here to fix build
             keywords.forEach(kw => {
                 if (card.text.includes(kw)) {
                     score += weightModifier * 10; // Base weight for a match
@@ -87,8 +101,6 @@ export const reorderDeckBasedOnFeedback = (
         }
 
         // Add randomness (Noise) to prevent deterministic ordering
-        // The noise is between 0 and 5. This ensures that a strong signal (>10) 
-        // will likely outweigh the noise, but equal scores are shuffled.
         const noise = Math.random() * 5;
         
         return { card, score: score + noise };
@@ -102,7 +114,6 @@ export const reorderDeckBasedOnFeedback = (
 
 // --- End Recommendation Logic ---
 
-// FIX: Added missing getPersonalizedDeck function to personalize and shuffle challenges.
 export const getPersonalizedDeck = (level: Level, players: Players, mode: Mode): Challenge[] => {
     const allChallenges = getChallenges();
     const challengesForLevel = allChallenges?.[level]?.[mode];
@@ -111,20 +122,10 @@ export const getPersonalizedDeck = (level: Level, players: Players, mode: Mode):
         return [];
     }
 
-    const { player1, player2 } = players;
-    const topPlayer = player1.role === 'top' ? player1 : player2;
-    const bottomPlayer = player1.role === 'bottom' ? player1 : player2;
-
-    // Filter out any non-string values (like nulls from sparse arrays) before processing
+    // Filter out any non-string values
     const personalizedTexts = challengesForLevel
         .filter(text => typeof text === 'string')
-        .map(text => {
-            return text
-                .replace(/{{player1}}/g, player1.name)
-                .replace(/{{player2}}/g, player2.name)
-                .replace(/{{topPlayer}}/g, topPlayer.name)
-                .replace(/{{bottomPlayer}}/g, bottomPlayer.name);
-    });
+        .map(text => personalizeText(text, players));
 
     const deck: Challenge[] = personalizedTexts.map(text => ({ text, mode }));
 
@@ -135,6 +136,101 @@ export const getPersonalizedDeck = (level: Level, players: Players, mode: Mode):
     }
 
     return deck;
+};
+
+// --- AI Generation Logic ---
+
+export const generateAIChallenges = async (
+    level: Level,
+    mode: Mode,
+    players: Players,
+    keyword?: string
+): Promise<Challenge[]> => {
+    // Note: In a real production app, ensure API_KEY is handled securely.
+    // Assuming process.env.API_KEY is injected by the build tool (Vite/Next.js)
+    if (!process.env.API_KEY) {
+        console.warn("API Key not found. Returning empty array.");
+        return [];
+    }
+
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    // Define context based on level
+    let levelContext = "";
+    switch (level) {
+        case 'gentle':
+            levelContext = "Romantic, sweet, ice-breaking, suitable for couples getting to know each other or light intimacy. Nothing too explicit.";
+            break;
+        case 'warming':
+            levelContext = "Flirty, spicy, sensual, building tension. Touching and kissing allowed.";
+            break;
+        case 'intimate':
+            levelContext = "High intimacy, roleplay, exploring desires, very spicy and bold.";
+            break;
+    }
+
+    // Define context based on mode
+    const modeContext = mode === 'truth' 
+        ? "Questions about relationships, desires, past memories, or fantasies."
+        : "Actions to perform on each other, physical interactions, or roleplay acts.";
+
+    const keywordInstruction = keyword 
+        ? `Focus specifically on the theme: "${keyword}".` 
+        : "Generate a diverse mix of challenges.";
+
+    const prompt = `
+        You are a game designer for a couple's Truth or Dare game.
+        
+        Context:
+        - Level: ${level} (${levelContext})
+        - Mode: ${mode} (${modeContext})
+        - Player Roles: Top (Dominant) and Bottom (Submissive/Receiver).
+        - User Keyword Preference: ${keywordInstruction}
+
+        Task:
+        Generate 5 unique, creative, and concise ${mode} challenges (in Chinese).
+        
+        Requirements:
+        1. **Language**: Simplified Chinese.
+        2. **Length**: Short and punchy (under 20 words).
+        3. **Format**: Use specific placeholders for names:
+           - Use '{{topPlayer}}' for the dominant role.
+           - Use '{{bottomPlayer}}' for the submissive role.
+           - Use '{{player1}}' or '{{player2}}' if roles don't matter.
+        4. **Style**: Similar to: "${defaultChallenges[level][mode][0]}".
+        5. **No Explanations**: Just return the raw JSON array.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash', // Using a fast model for UI responsiveness
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                }
+            }
+        });
+
+        const textData = response.text;
+        if (!textData) return [];
+
+        const rawStrings: string[] = JSON.parse(textData);
+        
+        // Personalize the AI generated strings immediately
+        const personalizedChallenges = rawStrings.map(text => ({
+            text: personalizeText(text, players),
+            mode: mode
+        }));
+
+        return personalizedChallenges;
+
+    } catch (error) {
+        console.error("Error generating AI challenges:", error);
+        return [];
+    }
 };
 
 
