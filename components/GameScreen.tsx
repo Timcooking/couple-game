@@ -190,45 +190,39 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
   }, [level, players]);
 
   return (
-    <div className="flex flex-col items-center justify-between w-full h-screen text-white p-4 font-sans animate-fade-in overflow-hidden touch-none relative">
+    <div className="flex flex-col items-center w-full h-[100dvh] text-white font-sans animate-fade-in overflow-hidden touch-none relative">
       
-      {/* Top Left: Back & History */}
-      <div className="absolute top-5 left-5 z-30 flex items-center gap-4">
-        <button
-          onClick={onBack}
-          className="text-white/60 hover:text-white transition-colors duration-300 text-lg font-sans flex items-center gap-1"
-        >
-          <span>&larr;</span> 返回
-        </button>
-        <button
-            onClick={() => setShowHistory(true)}
-            className="text-white/60 hover:text-white transition-colors duration-300 p-2 rounded-full hover:bg-white/10"
-            title="历史记录"
-        >
-            <HistoryIcon className="w-6 h-6" />
-        </button>
-      </div>
+      {/* Top Bar - Absolute */}
+      <div className="absolute top-0 left-0 w-full p-3 md:p-5 z-30 flex justify-between items-start pointer-events-none">
+        <div className="flex items-center gap-3 pointer-events-auto">
+            <button
+            onClick={onBack}
+            className="text-white/60 hover:text-white transition-colors duration-300 text-base md:text-lg font-sans flex items-center gap-1 bg-black/20 p-2 rounded-lg backdrop-blur-sm"
+            >
+            <span>&larr;</span> 返回
+            </button>
+            <button
+                onClick={() => setShowHistory(true)}
+                className="text-white/60 hover:text-white transition-colors duration-300 p-2 rounded-full hover:bg-white/10 bg-black/20 backdrop-blur-sm"
+                title="历史记录"
+            >
+                <HistoryIcon className="w-5 h-5 md:w-6 md:h-6" />
+            </button>
+        </div>
 
-      {/* Top Center: Round Counter */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 text-white/50 font-serif tracking-widest text-lg pointer-events-none">
-        第 <span className="text-white font-bold text-xl mx-1">{Math.floor(turn / 2) + 1}</span> 回合
-      </div>
-
-       {/* Top Right: Level Switcher */}
-       <div className="absolute top-5 right-5 z-30 flex flex-col items-end">
-         <div className="relative">
+        <div className="relative pointer-events-auto">
             <button 
                 onClick={() => setShowLevelMenu(!showLevelMenu)}
-                className="group flex flex-col items-end text-right transition-opacity hover:opacity-100 opacity-80"
+                className="group flex flex-col items-end text-right transition-opacity hover:opacity-100 opacity-90 bg-black/20 p-2 rounded-lg backdrop-blur-sm"
             >
-                <h2 className="text-xs font-bold text-white/60 uppercase tracking-wider mb-1 group-hover:text-white/80">
+                <h2 className="text-[10px] md:text-xs font-bold text-white/60 uppercase tracking-wider mb-0.5 group-hover:text-white/80">
                     当前级别
                 </h2>
                 <div className="flex items-center gap-2">
-                    <span className={`text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${LEVEL_DETAILS[level].className.replace(/hover:.*? /g, '')}`}>
+                    <span className={`text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${LEVEL_DETAILS[level].className.replace(/hover:.*? /g, '')}`}>
                         {LEVEL_DETAILS[level].name}
                     </span>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 text-white/50 transition-transform duration-300 ${showLevelMenu ? 'rotate-180' : ''}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 md:w-5 md:h-5 text-white/50 transition-transform duration-300 ${showLevelMenu ? 'rotate-180' : ''}`}>
                         <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                     </svg>
                 </div>
@@ -261,6 +255,184 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
                 )}
             </AnimatePresence>
          </div>
+      </div>
+
+      {/* Main Flex Column */}
+      <div className="flex flex-col w-full h-full pt-20 pb-2 px-4">
+        
+        {/* Info Area: Round & Player */}
+        <div className="shrink-0 flex flex-col items-center justify-center mb-4 z-20">
+             <div className="text-white/50 font-serif tracking-widest text-xs md:text-sm">
+                第 <span className="text-white font-bold text-base md:text-xl mx-1">{Math.floor(turn / 2) + 1}</span> 回合
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-white/90 mt-1">
+                轮到 <span className="text-yellow-300">{currentPlayer.name}</span>
+            </h2>
+        </div>
+
+        {/* Game Content Area (Flex Grow) */}
+        <div className="flex-1 w-full flex items-center justify-center relative perspective-[1200px] min-h-0">
+             <AnimatePresence mode="wait">
+                {!currentChallenge && !isSelecting ? (
+                <motion.div
+                    key="drawing"
+                    className="w-full h-full flex flex-col items-center justify-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                >
+                    {/* Rotatable Fan Container */}
+                    <motion.div 
+                        className="relative w-full h-48 md:h-80 flex items-center justify-center"
+                        style={{ x, rotate }}
+                        drag="x"
+                        dragConstraints={{ left: 0, right: 0 }}
+                        dragElastic={0.1}
+                    >
+                        {Array.from({ length: 9 }).map((_, i) => (
+                        <motion.div
+                            key={i}
+                            className={`absolute w-40 h-52 md:w-64 md:h-80 bg-black/40 border-2 ${borderColor} rounded-2xl shadow-lg flex items-center justify-center backdrop-blur-sm transition-colors duration-1000`}
+                            style={{ 
+                            originX: '50%', 
+                            originY: '200%', // Pivot point lower
+                            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)',
+                            backgroundSize: '10px 10px',
+                            }}
+                            initial={{
+                            rotate: (i - 4) * 10,
+                            y: Math.abs(i - 4) * 5,
+                            }}
+                            animate={{
+                                rotate: (i - 4) * 10,
+                                y: Math.abs(i - 4) * 5,
+                                scale: [1, 1.02, 1],
+                            }}
+                            transition={{
+                                scale: {
+                                    duration: 3,
+                                    repeat: Infinity,
+                                    delay: i * 0.1
+                                }
+                            }}
+                        />
+                        ))}
+                    </motion.div>
+
+                    {/* Static Buttons below the fan */}
+                    <motion.div 
+                        className="flex gap-4 md:gap-8 relative z-10 mt-8 md:mt-16"
+                    >
+                        <button
+                            onClick={() => selectChallenge('truth')}
+                            className={`group flex flex-col items-center gap-1 md:gap-2 px-6 py-3 md:px-10 md:py-4 bg-black/40 hover:bg-black/60 text-white font-bold text-lg md:text-xl rounded-xl border-2 ${borderColor} transition-all duration-300 ease-in-out backdrop-blur-sm`}
+                        >
+                            <HeartIcon className="w-6 h-6 md:w-8 md:h-8 text-pink-400/60 group-hover:text-pink-400 transition-colors" />
+                            真心话
+                        </button>
+                        <button
+                            onClick={() => selectChallenge('dare')}
+                            className={`group flex flex-col items-center gap-1 md:gap-2 px-6 py-3 md:px-10 md:py-4 bg-black/40 hover:bg-black/60 text-white font-bold text-lg md:text-xl rounded-xl border-2 ${borderColor} transition-all duration-300 ease-in-out backdrop-blur-sm`}
+                        >
+                            <FireIcon className="w-6 h-6 md:w-8 md:h-8 text-purple-400/60 group-hover:text-purple-400 transition-colors" />
+                            大冒险
+                        </button>
+                    </motion.div>
+                </motion.div>
+                ) : null }
+
+                {isSelecting && !currentChallenge && (
+                <motion.div
+                    key="shuffling"
+                    className="w-full h-full absolute inset-0 flex items-center justify-center pointer-events-none"
+                >
+                    <div className="relative w-full h-64 flex items-center justify-center">
+                        {/* Rapid shuffle animation */}
+                        {Array.from({ length: 5 }).map((_, i) => (
+                        <motion.div
+                            key={i}
+                            className={`absolute w-40 h-52 md:w-64 md:h-80 bg-black/50 border-2 ${borderColor} rounded-2xl shadow-lg`}
+                            initial={{ scale: 0.8, x: 0, opacity: 0 }}
+                            animate={{ 
+                                scale: [0.8, 1, 1.1, 0.5],
+                                x: [0, (i % 2 === 0 ? 100 : -100), 0],
+                                opacity: [0, 1, 0],
+                                rotate: [0, (i % 2 === 0 ? 10 : -10), 0]
+                            }}
+                            transition={{ 
+                                duration: 0.6, 
+                                times: [0, 0.2, 0.5, 1],
+                                ease: "easeInOut" 
+                            }}
+                        />
+                        ))}
+                    </div>
+                </motion.div>
+                )}
+
+                {currentChallenge ? (
+                    <motion.div
+                        key="card"
+                        initial={{ opacity: 0, scale: 0.5, rotateY: 180 }}
+                        animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+                        transition={{ type: "spring", damping: 20, stiffness: 100 }}
+                        exit={{ opacity: 0, scale: 0.8, y: -50 }}
+                        // Responsive Layout:
+                        // h-auto aspect-[3/4]: Maintain aspect ratio
+                        // max-h-full: Don't exceed available vertical space
+                        // w-full max-w-sm: Limit width
+                        className="w-full max-w-xs md:max-w-sm h-auto aspect-[3/4] max-h-full relative z-10"
+                    >
+                        <div className="relative w-full h-full">
+                            <ChallengeCard
+                                challenge={currentChallenge.text}
+                                mode={currentChallenge.mode}
+                                level={level}
+                                duration={currentChallenge.duration}
+                                onFeedback={handleFeedback}
+                                feedbackGiven={feedbackGiven}
+                            />
+                            
+                            {/* Reroll Button (Top Right) - Only for Dare */}
+                            {currentChallenge.mode === 'dare' && !hasRerolled && (
+                                <motion.button
+                                    initial={{ opacity: 0, scale: 0 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    whileTap={{ rotate: 180 }}
+                                    onClick={handleReroll}
+                                    className="absolute -top-3 -right-3 p-3 bg-gray-800 border-2 border-white/20 rounded-full text-white shadow-lg hover:bg-gray-700 z-30"
+                                    title="换一张 (仅限一次)"
+                                >
+                                    <RefreshIcon className="w-5 h-5" />
+                                </motion.button>
+                            )}
+                        </div>
+                    </motion.div>
+                ) : null}
+            </AnimatePresence>
+        </div>
+
+        {/* Footer Area */}
+        <div className="shrink-0 h-16 w-full max-w-md flex flex-col justify-end items-center z-20 mt-2">
+             <AnimatePresence>
+                {currentChallenge && (
+                    <motion.div
+                        key="next"
+                        className="w-full"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                    >
+                        <button
+                            onClick={nextTurn}
+                            className="w-full py-3 px-6 bg-purple-700/80 hover:bg-purple-700 border border-purple-500/50 rounded-xl transition-all duration-300 ease-in-out text-lg md:text-xl font-semibold shadow-lg shadow-purple-900/50"
+                        >
+                            下一轮
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
       </div>
 
       {/* Level Up Prompt Modal */}
@@ -370,176 +542,6 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
             </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="absolute top-[15%] text-center z-20">
-        <h2 className="text-2xl font-bold text-white/90">
-            轮到 <span className="text-yellow-300">{currentPlayer.name}</span>
-        </h2>
-      </div>
-
-      <div className="flex-1 w-full flex flex-col items-center justify-center relative perspective-[1200px]">
-         <AnimatePresence mode="wait">
-            {!currentChallenge && !isSelecting ? (
-              <motion.div
-                key="drawing"
-                className="w-full h-full flex flex-col items-center justify-center cursor-grab active:cursor-grabbing"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                {/* Rotatable Fan Container */}
-                <motion.div 
-                    className="relative w-full h-96 flex items-center justify-center -translate-y-10"
-                    style={{ x, rotate }}
-                    drag="x"
-                    dragConstraints={{ left: 0, right: 0 }}
-                    dragElastic={0.1}
-                    onDragEnd={() => {
-                        // Optional: Add snap back physics logic if desired, 
-                        // but framer motion dragConstraints with elastic 0.1 handles a nice "return to center" feel naturally
-                    }}
-                >
-                    {Array.from({ length: 9 }).map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className={`absolute w-64 h-80 bg-black/40 border-2 ${borderColor} rounded-2xl shadow-lg flex items-center justify-center backdrop-blur-sm transition-colors duration-1000`}
-                        style={{ 
-                          originX: '50%', 
-                          originY: '200%', // Pivot point lower
-                          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)',
-                          backgroundSize: '10px 10px',
-                        }}
-                        initial={{
-                           rotate: (i - 4) * 10,
-                           y: Math.abs(i - 4) * 5,
-                        }}
-                        animate={{
-                            rotate: (i - 4) * 10,
-                            y: Math.abs(i - 4) * 5,
-                            // Subtle breathing animation for each card
-                            scale: [1, 1.02, 1],
-                        }}
-                        transition={{
-                            scale: {
-                                duration: 3,
-                                repeat: Infinity,
-                                delay: i * 0.1
-                            }
-                        }}
-                      />
-                    ))}
-                </motion.div>
-
-                {/* Static Buttons below the fan */}
-                <motion.div 
-                    className="flex gap-8 relative z-10 mt-10"
-                >
-                    <button
-                        onClick={() => selectChallenge('truth')}
-                        className={`group flex flex-col items-center gap-2 px-10 py-4 bg-black/40 hover:bg-black/60 text-white font-bold text-xl rounded-xl border-2 ${borderColor} transition-all duration-300 ease-in-out backdrop-blur-sm`}
-                    >
-                        <HeartIcon className="w-8 h-8 text-pink-400/60 group-hover:text-pink-400 transition-colors" />
-                        真心话
-                    </button>
-                    <button
-                        onClick={() => selectChallenge('dare')}
-                        className={`group flex flex-col items-center gap-2 px-10 py-4 bg-black/40 hover:bg-black/60 text-white font-bold text-xl rounded-xl border-2 ${borderColor} transition-all duration-300 ease-in-out backdrop-blur-sm`}
-                    >
-                        <FireIcon className="w-8 h-8 text-purple-400/60 group-hover:text-purple-400 transition-colors" />
-                        大冒险
-                    </button>
-                </motion.div>
-              </motion.div>
-            ) : null }
-
-            {isSelecting && !currentChallenge && (
-              <motion.div
-                key="shuffling"
-                className="w-full h-full absolute inset-0 flex items-center justify-center pointer-events-none"
-              >
-                <div className="relative w-full h-96 flex items-center justify-center -translate-y-10">
-                    {/* Rapid shuffle animation */}
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className={`absolute w-64 h-80 bg-black/50 border-2 ${borderColor} rounded-2xl shadow-lg`}
-                        initial={{ scale: 0.8, x: 0, opacity: 0 }}
-                        animate={{ 
-                            scale: [0.8, 1, 1.1, 0.5],
-                            x: [0, (i % 2 === 0 ? 100 : -100), 0],
-                            opacity: [0, 1, 0],
-                            rotate: [0, (i % 2 === 0 ? 10 : -10), 0]
-                        }}
-                        transition={{ 
-                            duration: 0.6, 
-                            times: [0, 0.2, 0.5, 1],
-                            ease: "easeInOut" 
-                        }}
-                      />
-                    ))}
-                </div>
-              </motion.div>
-            )}
-
-            {currentChallenge ? (
-                <motion.div
-                    key="card"
-                    initial={{ opacity: 0, scale: 0.5, rotateY: 180 }}
-                    animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-                    transition={{ type: "spring", damping: 20, stiffness: 100 }}
-                    exit={{ opacity: 0, scale: 0.8, y: -50 }}
-                    className="w-full max-w-sm h-[60vh] min-h-[420px] max-h-[600px] relative z-10"
-                >
-                    <div className="relative w-full h-full">
-                        <ChallengeCard
-                            challenge={currentChallenge.text}
-                            mode={currentChallenge.mode}
-                            level={level}
-                            duration={currentChallenge.duration}
-                            onFeedback={handleFeedback}
-                            feedbackGiven={feedbackGiven}
-                        />
-                        
-                        {/* Reroll Button (Top Right) - Only for Dare */}
-                        {currentChallenge.mode === 'dare' && !hasRerolled && (
-                            <motion.button
-                                initial={{ opacity: 0, scale: 0 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                whileTap={{ rotate: 180 }}
-                                onClick={handleReroll}
-                                className="absolute -top-3 -right-3 p-3 bg-gray-800 border-2 border-white/20 rounded-full text-white shadow-lg hover:bg-gray-700 z-30"
-                                title="换一张 (仅限一次)"
-                            >
-                                <RefreshIcon className="w-5 h-5" />
-                            </motion.button>
-                        )}
-                    </div>
-                </motion.div>
-            ) : null}
-        </AnimatePresence>
-      </div>
-      
-      {/* Footer Area - Now using Flex relative positioning instead of Absolute to prevent overlap */}
-      <div className="w-full max-w-md px-4 pb-6 z-20 flex flex-col justify-end items-center h-24 shrink-0">
-        <AnimatePresence>
-            {currentChallenge && (
-                <motion.div
-                    key="next"
-                    className="w-full"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                >
-                    <button
-                        onClick={nextTurn}
-                        className="w-full py-4 px-6 bg-purple-700/80 hover:bg-purple-700 border border-purple-500/50 rounded-xl transition-all duration-300 ease-in-out text-xl font-semibold shadow-lg shadow-purple-900/50"
-                    >
-                        下一轮
-                    </button>
-                </motion.div>
-            )}
-         </AnimatePresence>
-      </div>
 
     </div>
   );

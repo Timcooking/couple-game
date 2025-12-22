@@ -153,24 +153,18 @@ export const defaultChallenges: Record<Level, Record<Mode, string[]>> = {
     ],
     dare: [
       "抱着 {{player1}} 转三圈。",
-      "仔仔细细地描述一下你今天穿的内衣。",
+      "五分钟内，一起为对方挑一件情趣用品（眼罩，口球等...）并分享为什么。",
       "{{player1}}，你必须对{{player2}}做一次为时30秒的表白。[TIME:30]",
       "{{player1}}，认真地问{{player2}}，你能不能轻轻咬他的耳朵。[TIME:15]",
-      "{{player1}}，轻柔地抚摸{{player2}}的头发，然后抓住他的脖子亲吻他。[TIME:15]",
-      "{{player1}}，充满情欲地爱抚{{player2}}的上半身15秒。[TIME:15]",
+      "{{player1}}，轻柔地抚摸{{player2}}的头发，然后抓住他的脖子亲吻。[TIME:15]",
       "{{player1}}，用你的舌头挑逗{{player2}}的耳垂。",
       "{{topPlayer}}，把{{bottomPlayer}}按在墙上，轻声对他说出你的欲望。",
-      "{{player1}}，坐在椅子上，身体放松。让{{player2}}蒙上你的眼睛，并亲吻你身上他想吻的任何部位！",
       "{{player1}}，抚摸{{player2}}的脸，直视他的眼睛，告诉他你认为他有多帅。",
       "{{player1}}，吸吮{{player2}}的一根手指。",
       "{{player1}}，你现在是一个情场高手。你有30秒来撩{{player2}}。然后交换再来一次。[TIME:30]",
       "{{player1}}，拿起一杯酒，让{{player2}}喝一口，然后温柔地舔他的嘴唇。",
-      "{{player1}}，赞美{{player2}}的身体。如果他认为这赞美是真的，你将得到一个热吻为奖励。",
-      "{{player1}}，只用舌头在{{player2}}的下腹上画图。他要猜你画的是什么。",
-      "{{topPlayer}}，直到下下个挑战开始，你都要用“我好想要你”来结束你说的所有的话。",
+      "{{topPlayer}}，直到下下个挑战开始，你都要用“宝宝”来结束你说的所有的话。",
       "{{bottomPlayer}}，直到下下个挑战开始，你都要用“老公”来结束你说的所有的话。",
-      "{{bottomPlayer}}跪在地上，{{topPlayer}}抚摸着他的头，直视对方的眼睛，{{topPlayer}}指定一段话让{{bottomPlayer}}读出来。",
-      "{{topPlayer}}将{{bottomPlayer}}按在墙上，抚摸对方的脸或者下巴，直视对方的眼睛，对着{{bottomPlayer}}说出一段情话。"
     ],
   },
   warming: {
@@ -189,17 +183,17 @@ export const defaultChallenges: Record<Level, Record<Mode, string[]>> = {
     ],
     dare: [
       "{{topPlayer}}，用嘴喂 {{bottomPlayer}} 吃一样东西。",
-      "[TIME:60]深情地凝视对方的眼睛一分钟，不许笑。",
+      "{{player1}}，坐在椅子上，身体放松。让{{player2}}蒙上你的眼睛，并亲吻你身上他想吻的任何部位！",
       "{{topPlayer}}，亲吻 {{bottomPlayer}} 身体上一个Ta之前没被亲过的地方。",
-      "{{bottomPlayer}}，用诱惑的语气，给 {{topPlayer}} 读一段随机的文字。",
-      "用你的嘴唇在对方脖子上留下一个吻痕。",
+      "{{player1}}，只用舌头在{{player2}}的下腹上画图。他要猜你画的是什么。",
+      "用你的嘴唇在对方身体上留下一个吻痕。",
       "狡猾的挑战：在接下来的三轮中，你都只能选择大冒险。",
       "{{topPlayer}}，命令 {{bottomPlayer}} 做一件让ta害羞但又兴奋的事情。",
       "[TIME:600]接下来十分钟，{{bottomPlayer}} 必须称呼 {{topPlayer}} 为“主人”或自定义的尊称。",
-      "{{topPlayer}}，你能举起{{bottomPlayer}}三次或者同时做三个深蹲吗？如果做得到，你会赢得一个吻！",
-      "{{topPlayer}}，走到门外去，并且把{{bottomPlayer}}按在门上。你们要在1分钟内激吻并相互爱抚。[TIME:60]",
+      "{{topPlayer}}，把{{bottomPlayer}}按在门上。你们要在1分钟内激吻并相互爱抚。[TIME:60]",
       "{{topPlayer}}，直到下下个挑战开始，你都要用“老婆”来结束你说的所有的话。",
-      "{{bottomPlayer}}，在{{topPlayer}}耳边轻声吟叫30秒。[TIME:30]"
+      "{{topPlayer}}将{{bottomPlayer}}按在墙上，抚摸对方的脸或者下巴，直视对方的眼睛，对着{{bottomPlayer}}说出一段情话。",
+      "{{bottomPlayer}}跪在地上，{{topPlayer}}抚摸着他的头，直视对方的眼睛，{{topPlayer}}指定一段话让{{bottomPlayer}}读出来。",
     ],
   },
   intimate: {
@@ -215,13 +209,14 @@ export const defaultChallenges: Record<Level, Record<Mode, string[]>> = {
     ],
     dare: [
       "{{player1}}，蒙上{{player2}}的眼睛，用冰块游走ta全身。[TIME:60]",
+      "{{bottomPlayer}}背过双手，{{topPlayer}} 咬住 {{bottomPlayer}} 的乳头，询问一件你很想知道的问题。",
+      "{{topPlayer}}背过双手，{{bottomPlayer}} 咬住 {{topPlayer}} 的下体，询问一件你很想知道的问题。",
       "{{player1}}，帮{{player2}}脱掉一件贴身衣物（如果有的话）。",
       "{{player1}}，用嘴唇和舌头侍奉{{player2}}的大腿内侧30秒。[TIME:30]",
       "{{player1}}，躺下，让{{player2}}在你身上做十个俯卧撑，每次都要亲到你。",
       "{{player1}}，给{{player2}}全身涂抹润滑液或精油。",
       "{{player1}}，只用嘴，解开{{player2}}的皮带或扣子。",
       "{{player1}}，亲吻{{player2}}的私密部位附近（边缘挑逗）。",
-      "{{player1}}，发出你觉得最销魂的声音。",
     ]
   }
 };
