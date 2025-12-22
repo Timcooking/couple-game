@@ -84,8 +84,8 @@ const DynamicBackground: React.FC<DynamicBackgroundProps> = ({ level }) => {
       vy: number;
 
       constructor() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
+        this.x = Math.random() * canvas!.width;
+        this.y = Math.random() * canvas!.height;
         this.radius = options.defaultRadius + Math.random() * options.variantRadius;
         this.speed = options.defaultSpeed + Math.random() * options.variantSpeed;
         this.directionAngle = Math.floor(Math.random() * 360);
@@ -97,8 +97,8 @@ const DynamicBackground: React.FC<DynamicBackgroundProps> = ({ level }) => {
         this.x += this.vx;
         this.y += this.vy;
 
-        if (this.x > canvas.width || this.x < 0) this.vx *= -1;
-        if (this.y > canvas.height || this.y < 0) this.vy *= -1;
+        if (this.x > canvas!.width || this.x < 0) this.vx *= -1;
+        if (this.y > canvas!.height || this.y < 0) this.vy *= -1;
       }
 
       draw() {
