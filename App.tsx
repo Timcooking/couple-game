@@ -60,17 +60,27 @@ const InstructionModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
 const LevelSelector: React.FC<{ onSelectLevel: (level: Level) => void }> = ({ onSelectLevel }) => {
   return (
-    <div className="text-center text-white p-4 animate-fade-in">
-      <h1 className="text-4xl md:text-5xl font-bold mb-2 tracking-wider">情侣真心话大冒险</h1>
+    <div className="text-center text-white p-4 animate-fade-in flex flex-col items-center">
+      <div className="relative mb-12 mt-4">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-br from-white via-pink-100 to-purple-200 drop-shadow-sm">
+            真心话大冒险
+          </h1>
+          <div className="absolute -bottom-6 right-0 md:-bottom-8 md:-right-4 transform -rotate-6">
+              <span className="font-handwriting text-3xl md:text-5xl text-pink-400 font-bold tracking-wide" style={{ textShadow: '0 2px 10px rgba(244, 114, 182, 0.4)' }}>
+                  with love
+              </span>
+          </div>
+      </div>
+
       <p className="text-lg md:text-xl text-white/80 mb-12">选择一个级别，开始心跳之旅</p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto w-full">
         {(Object.keys(LEVEL_DETAILS) as Level[]).map((levelKey) => {
           const level = LEVEL_DETAILS[levelKey];
           return (
             <button
               key={levelKey}
               onClick={() => onSelectLevel(levelKey)}
-              className={`p-8 rounded-2xl transition-colors duration-300 ease-in-out text-white font-bold ${level.flatClassName}`}
+              className={`p-8 rounded-2xl transition-all duration-300 ease-in-out text-white font-bold hover:scale-105 transform ${level.flatClassName}`}
             >
               <h2 className="text-2xl">{level.name}</h2>
             </button>
