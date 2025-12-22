@@ -157,7 +157,7 @@ export const defaultChallenges: Record<Level, Record<Mode, string[]>> = {
       "{{player1}}，你必须对{{player2}}做一次为时30秒的表白。[TIME:30]",
       "{{player1}}，认真地问{{player2}}，你能不能轻轻咬他的耳朵。[TIME:15]",
       "{{player1}}，轻柔地抚摸{{player2}}的头发，然后抓住他的脖子亲吻。[TIME:15]",
-      "{{player1}}，用你的舌头挑逗{{player2}}的耳垂。",
+      "相互拥抱并说出对方的三个优点。",
       "{{topPlayer}}，把{{bottomPlayer}}按在墙上，轻声对他说出你的欲望。",
       "{{player1}}，抚摸{{player2}}的脸，直视他的眼睛，告诉他你认为他有多帅。",
       "{{player1}}，吸吮{{player2}}的一根手指。",

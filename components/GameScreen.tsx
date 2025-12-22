@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AnimatePresence, motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
 import { getPersonalizedDeck, reorderDeckBasedOnFeedback, type Challenge } from '../services/geminiService';
 import type { Level, Players, Mode } from '../types';
@@ -27,6 +27,12 @@ interface HistoryItem {
   timestamp: string;
 }
 
+interface PenaltyState {
+    mode?: Mode;
+    customText?: string;
+    sourcePlayerName: string;
+}
+
 const parseChallenge = (rawText: string): { text: string; duration: number | null } => {
     const timerMatch = rawText.match(/\[TIME:(\d+)\]/);
     if (timerMatch) {
@@ -52,6 +58,15 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
   const [showLevelUpPrompt, setShowLevelUpPrompt] = useState(false);
   const [promptShown, setPromptShown] = useState(false);
   
+  // Reward System State
+  const [playerCompletedCounts, setPlayerCompletedCounts] = useState<Record<string, number>>({
+      [players.player1.name]: 0,
+      [players.player2.name]: 0
+  });
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [activePenalty, setActivePenalty] = useState<PenaltyState | null>(null);
+  const [customInputText, setCustomInputText] = useState('');
+
   // Reroll state
   const [hasRerolled, setHasRerolled] = useState(false);
 
@@ -87,10 +102,37 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
   }, [turn, level, promptShown, onChangeLevel]);
 
   const currentPlayer = useMemo(() => (turn % 2 === 0 ? players.player1 : players.player2), [turn, players]);
+  const nextPlayer = useMemo(() => (turn % 2 === 0 ? players.player2 : players.player1), [turn, players]);
 
-  const selectChallenge = (mode: Mode) => {
+  // Determine if there is an active penalty for the CURRENT turn
+  useEffect(() => {
+      if (activePenalty && !currentChallenge && !isSelecting) {
+          // If custom text, set it immediately
+          if (activePenalty.customText) {
+             const timerMatch = activePenalty.customText.match(/\[TIME:(\d+)\]/);
+             let duration = null;
+             let text = activePenalty.customText;
+             if (timerMatch) {
+                 duration = parseInt(timerMatch[1], 10);
+                 text = activePenalty.customText.replace(/\[TIME:(\d+)\]/, '').trim();
+             }
+             
+             // Small delay for effect
+             setTimeout(() => {
+                 setCurrentChallenge({ mode: activePenalty.mode || 'dare', text, duration });
+             }, 500);
+          } else if (activePenalty.mode) {
+              // If forced mode, automatically select that mode
+              selectChallenge(activePenalty.mode, true);
+          }
+      }
+  }, [activePenalty, turn]);
+
+
+  const selectChallenge = (mode: Mode, isForced = false) => {
     // Prevent selection during animation
-    if (isSelecting || currentChallenge) return;
+    if ((isSelecting || currentChallenge) && !isForced) return;
+    
     setIsSelecting(mode);
     setFeedbackGiven(null);
     setHasRerolled(false); // Reset reroll chance
@@ -161,6 +203,30 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
       else setDareDeck(reordered);
   };
 
+  const proceedToNextTurn = () => {
+    setTurn(t => t + 1);
+    setCurrentChallenge(null);
+    setIsSelecting(null);
+    setFeedbackGiven(null);
+    setHasRerolled(false);
+    
+    // Clear penalty if it was active for this turn
+    if (activePenalty) {
+        setActivePenalty(null);
+    }
+  };
+
+  const handleRewardSelection = (selection: { mode?: Mode; customText?: string }) => {
+      setActivePenalty({
+          mode: selection.mode,
+          customText: selection.customText,
+          sourcePlayerName: currentPlayer.name
+      });
+      setShowRewardModal(false);
+      setCustomInputText('');
+      proceedToNextTurn();
+  };
+
   const nextTurn = () => {
     if (!currentChallenge) return;
 
@@ -174,20 +240,32 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }, ...prev]);
 
-    // Note: Decks are already updated in selectChallenge/handleReroll/handleFeedback
-    // We just proceed to next turn.
+    // Update completed count for current player
+    const newCount = (playerCompletedCounts[currentPlayer.name] || 0) + 1;
+    setPlayerCompletedCounts(prev => ({
+        ...prev,
+        [currentPlayer.name]: newCount
+    }));
 
-    setTurn(t => t + 1);
-    setCurrentChallenge(null);
-    setIsSelecting(null);
-    setFeedbackGiven(null);
-    setHasRerolled(false);
+    // Check for Reward Trigger
+    // Trigger every 3rd completion (3, 6, 9, 12...)
+    if (newCount > 0 && newCount % 3 === 0) {
+        setShowRewardModal(true);
+        // Do not proceed to next turn yet, wait for modal choice
+    } else {
+        proceedToNextTurn();
+    }
   };
 
   useEffect(() => {
     setTruthDeck(getPersonalizedDeck(level, players, 'truth'));
     setDareDeck(getPersonalizedDeck(level, players, 'dare'));
   }, [level, players]);
+
+  // Determine reward tier
+  const currentStreak = playerCompletedCounts[currentPlayer.name] || 0;
+  // Tier 2 happens on the 12th completion and every 3rd completion after that (12, 15, 18...)
+  const isTier2Reward = currentStreak >= 12;
 
   return (
     <div className="flex flex-col items-center w-full h-[100dvh] text-white font-sans animate-fade-in overflow-hidden touch-none relative">
@@ -268,6 +346,13 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
             <h2 className="text-xl md:text-2xl font-bold text-white/90 mt-1">
                 轮到 <span className="text-yellow-300">{currentPlayer.name}</span>
             </h2>
+            {activePenalty && !currentChallenge && (
+                <div className="mt-2 px-3 py-1 bg-red-900/50 border border-red-500/30 rounded-full animate-pulse">
+                    <span className="text-xs md:text-sm text-red-200">
+                        ⚠️ 被 <span className="font-bold">{activePenalty.sourcePlayerName}</span> 强制指定中
+                    </span>
+                </div>
+            )}
         </div>
 
         {/* Game Content Area (Flex Grow) */}
@@ -281,63 +366,76 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                 >
-                    {/* Rotatable Fan Container */}
-                    <motion.div 
-                        className="relative w-full h-48 md:h-80 flex items-center justify-center"
-                        style={{ x, rotate }}
-                        drag="x"
-                        dragConstraints={{ left: 0, right: 0 }}
-                        dragElastic={0.1}
-                    >
-                        {Array.from({ length: 9 }).map((_, i) => (
-                        <motion.div
-                            key={i}
-                            className={`absolute w-40 h-52 md:w-64 md:h-80 bg-black/40 border-2 ${borderColor} rounded-2xl shadow-lg flex items-center justify-center backdrop-blur-sm transition-colors duration-1000`}
-                            style={{ 
-                            originX: '50%', 
-                            originY: '200%', // Pivot point lower
-                            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)',
-                            backgroundSize: '10px 10px',
-                            }}
-                            initial={{
-                            rotate: (i - 4) * 10,
-                            y: Math.abs(i - 4) * 5,
-                            }}
-                            animate={{
+                    {/* Rotatable Fan Container - Hide if penalty active */}
+                    {!activePenalty && (
+                        <motion.div 
+                            className="relative w-full h-48 md:h-80 flex items-center justify-center"
+                            style={{ x, rotate }}
+                            drag="x"
+                            dragConstraints={{ left: 0, right: 0 }}
+                            dragElastic={0.1}
+                        >
+                            {Array.from({ length: 9 }).map((_, i) => (
+                            <motion.div
+                                key={i}
+                                className={`absolute w-40 h-52 md:w-64 md:h-80 bg-black/40 border-2 ${borderColor} rounded-2xl shadow-lg flex items-center justify-center backdrop-blur-sm transition-colors duration-1000`}
+                                style={{ 
+                                originX: '50%', 
+                                originY: '200%', // Pivot point lower
+                                backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)',
+                                backgroundSize: '10px 10px',
+                                }}
+                                initial={{
                                 rotate: (i - 4) * 10,
                                 y: Math.abs(i - 4) * 5,
-                                scale: [1, 1.02, 1],
-                            }}
-                            transition={{
-                                scale: {
-                                    duration: 3,
-                                    repeat: Infinity,
-                                    delay: i * 0.1
-                                }
-                            }}
-                        />
-                        ))}
-                    </motion.div>
+                                }}
+                                animate={{
+                                    rotate: (i - 4) * 10,
+                                    y: Math.abs(i - 4) * 5,
+                                    scale: [1, 1.02, 1],
+                                }}
+                                transition={{
+                                    scale: {
+                                        duration: 3,
+                                        repeat: Infinity,
+                                        delay: i * 0.1
+                                    }
+                                }}
+                            />
+                            ))}
+                        </motion.div>
+                    )}
 
                     {/* Static Buttons below the fan */}
-                    <motion.div 
-                        className="flex gap-4 md:gap-8 relative z-10 mt-8 md:mt-16"
-                    >
-                        <button
-                            onClick={() => selectChallenge('truth')}
-                            className={`group flex flex-col items-center gap-1 md:gap-2 px-6 py-3 md:px-10 md:py-4 bg-black/40 hover:bg-black/60 text-white font-bold text-lg md:text-xl rounded-xl border-2 ${borderColor} transition-all duration-300 ease-in-out backdrop-blur-sm`}
+                    {!activePenalty ? (
+                        <motion.div 
+                            className="flex gap-4 md:gap-8 relative z-10 mt-8 md:mt-16"
                         >
-                            <HeartIcon className="w-6 h-6 md:w-8 md:h-8 text-pink-400/60 group-hover:text-pink-400 transition-colors" />
-                            真心话
-                        </button>
-                        <button
-                            onClick={() => selectChallenge('dare')}
-                            className={`group flex flex-col items-center gap-1 md:gap-2 px-6 py-3 md:px-10 md:py-4 bg-black/40 hover:bg-black/60 text-white font-bold text-lg md:text-xl rounded-xl border-2 ${borderColor} transition-all duration-300 ease-in-out backdrop-blur-sm`}
+                            <button
+                                onClick={() => selectChallenge('truth')}
+                                className={`group flex flex-col items-center gap-1 md:gap-2 px-6 py-3 md:px-10 md:py-4 bg-black/40 hover:bg-black/60 text-white font-bold text-lg md:text-xl rounded-xl border-2 ${borderColor} transition-all duration-300 ease-in-out backdrop-blur-sm`}
+                            >
+                                <HeartIcon className="w-6 h-6 md:w-8 md:h-8 text-pink-400/60 group-hover:text-pink-400 transition-colors" />
+                                真心话
+                            </button>
+                            <button
+                                onClick={() => selectChallenge('dare')}
+                                className={`group flex flex-col items-center gap-1 md:gap-2 px-6 py-3 md:px-10 md:py-4 bg-black/40 hover:bg-black/60 text-white font-bold text-lg md:text-xl rounded-xl border-2 ${borderColor} transition-all duration-300 ease-in-out backdrop-blur-sm`}
+                            >
+                                <FireIcon className="w-6 h-6 md:w-8 md:h-8 text-purple-400/60 group-hover:text-purple-400 transition-colors" />
+                                大冒险
+                            </button>
+                        </motion.div>
+                    ) : (
+                         <motion.div 
+                            className="flex flex-col items-center justify-center gap-4 relative z-10"
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
                         >
-                            <FireIcon className="w-6 h-6 md:w-8 md:h-8 text-purple-400/60 group-hover:text-purple-400 transition-colors" />
-                            大冒险
-                        </button>
-                    </motion.div>
+                            <div className="text-xl text-red-300 font-bold mb-4">等待审判降临...</div>
+                             <div className="w-16 h-16 border-4 border-t-red-500 border-white/20 rounded-full animate-spin"></div>
+                        </motion.div>
+                    )}
                 </motion.div>
                 ) : null }
 
@@ -377,10 +475,6 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
                         animate={{ opacity: 1, scale: 1, rotateY: 0 }}
                         transition={{ type: "spring", damping: 20, stiffness: 100 }}
                         exit={{ opacity: 0, scale: 0.8, y: -50 }}
-                        // Responsive Layout:
-                        // h-auto aspect-[3/4]: Maintain aspect ratio
-                        // max-h-full: Don't exceed available vertical space
-                        // w-full max-w-sm: Limit width
                         className="w-full max-w-xs md:max-w-sm h-auto aspect-[3/4] max-h-full relative z-10"
                     >
                         <div className="relative w-full h-full">
@@ -393,8 +487,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
                                 feedbackGiven={feedbackGiven}
                             />
                             
-                            {/* Reroll Button (Top Right) - Only for Dare */}
-                            {currentChallenge.mode === 'dare' && !hasRerolled && (
+                            {/* Reroll Button (Top Right) - Only for Dare AND if NOT a penalty card */}
+                            {currentChallenge.mode === 'dare' && !hasRerolled && !activePenalty && (
                                 <motion.button
                                     initial={{ opacity: 0, scale: 0 }}
                                     animate={{ opacity: 1, scale: 1 }}
@@ -434,6 +528,82 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
             </AnimatePresence>
         </div>
       </div>
+
+      {/* Reward Selection Modal */}
+      <AnimatePresence>
+          {showRewardModal && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+              >
+                  <motion.div
+                    initial={{ scale: 0.9, y: 20 }}
+                    animate={{ scale: 1, y: 0 }}
+                    className="bg-gray-900 w-full max-w-md p-6 rounded-2xl border-2 border-yellow-500/50 shadow-[0_0_30px_rgba(234,179,8,0.3)] relative"
+                  >
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-yellow-500 text-black font-bold px-4 py-1 rounded-full text-sm shadow-lg">
+                          🎉 {isTier2Reward ? "终极奖励解锁" : "连胜奖励解锁"}
+                      </div>
+                      
+                      <h3 className="text-2xl font-bold text-center text-white mb-2 mt-2">
+                          {currentPlayer.name}, 你获得了支配权!
+                      </h3>
+                      <p className="text-white/60 text-center mb-6 text-sm">
+                          {isTier2Reward 
+                            ? `你已完成${currentStreak}次挑战！现在你可以完全自定义对方的命运。` 
+                            : `你已完成${currentStreak}次挑战！指定 ${nextPlayer.name} 下一轮必须做什么。`}
+                      </p>
+
+                      <div className="space-y-4">
+                          <button
+                            onClick={() => handleRewardSelection({ mode: 'truth' })}
+                            className="w-full py-4 rounded-xl bg-pink-900/40 border border-pink-500/50 hover:bg-pink-800/40 hover:border-pink-400 transition-all flex items-center justify-center gap-3 group"
+                          >
+                              <HeartIcon className="w-6 h-6 text-pink-400 group-hover:scale-110 transition-transform" />
+                              <div className="text-left">
+                                  <div className="font-bold text-pink-200">强制真心话</div>
+                                  <div className="text-xs text-pink-400/60">从题库随机抽取</div>
+                              </div>
+                          </button>
+                          
+                          <button
+                            onClick={() => handleRewardSelection({ mode: 'dare' })}
+                            className="w-full py-4 rounded-xl bg-purple-900/40 border border-purple-500/50 hover:bg-purple-800/40 hover:border-purple-400 transition-all flex items-center justify-center gap-3 group"
+                          >
+                              <FireIcon className="w-6 h-6 text-purple-400 group-hover:scale-110 transition-transform" />
+                              <div className="text-left">
+                                  <div className="font-bold text-purple-200">强制大冒险</div>
+                                  <div className="text-xs text-purple-400/60">从题库随机抽取</div>
+                              </div>
+                          </button>
+
+                          {isTier2Reward && (
+                              <div className="pt-4 border-t border-white/10">
+                                  <label className="block text-xs font-bold text-yellow-500 mb-2 uppercase tracking-wide">
+                                      或者自定义惩罚
+                                  </label>
+                                  <textarea
+                                    value={customInputText}
+                                    onChange={(e) => setCustomInputText(e.target.value)}
+                                    placeholder="输入你想让对方做的任何事..."
+                                    className="w-full bg-black/40 border border-white/20 rounded-lg p-3 text-white placeholder-white/30 focus:border-yellow-500 outline-none mb-3 min-h-[80px]"
+                                  />
+                                  <button
+                                    onClick={() => handleRewardSelection({ customText: customInputText, mode: 'dare' })}
+                                    disabled={!customInputText.trim()}
+                                    className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 text-black font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                      执行自定义惩罚
+                                  </button>
+                              </div>
+                          )}
+                      </div>
+                  </motion.div>
+              </motion.div>
+          )}
+      </AnimatePresence>
 
       {/* Level Up Prompt Modal */}
       <AnimatePresence>
