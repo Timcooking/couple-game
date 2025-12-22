@@ -84,6 +84,7 @@ const DynamicBackground: React.FC<DynamicBackgroundProps> = ({ level }) => {
       vy: number;
 
       constructor() {
+        // Fix: Use non-null assertion (!) because we checked canvas existence outside the class
         this.x = Math.random() * canvas!.width;
         this.y = Math.random() * canvas!.height;
         this.radius = options.defaultRadius + Math.random() * options.variantRadius;
@@ -97,6 +98,7 @@ const DynamicBackground: React.FC<DynamicBackgroundProps> = ({ level }) => {
         this.x += this.vx;
         this.y += this.vy;
 
+        // Fix: Use non-null assertion (!) here as well
         if (this.x > canvas!.width || this.x < 0) this.vx *= -1;
         if (this.y > canvas!.height || this.y < 0) this.vy *= -1;
       }

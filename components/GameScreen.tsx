@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AnimatePresence, motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
 import { getPersonalizedDeck, reorderDeckBasedOnFeedback, type Challenge } from '../services/geminiService';
 import type { Level, Players, Mode } from '../types';
@@ -71,7 +71,6 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
   // Map drag x to rotation: dragging 200px rotates 30 degrees
   const rotateInput = useTransform(x, [-200, 200], [-30, 30]);
   const rotate = useSpring(rotateInput, { stiffness: 400, damping: 30 });
-  const fanContainerRef = useRef<HTMLDivElement>(null);
 
 
   useEffect(() => {
@@ -387,7 +386,6 @@ const GameScreen: React.FC<GameScreenProps> = ({ level, onBack, players, onChang
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                ref={fanContainerRef}
               >
                 {/* Rotatable Fan Container */}
                 <motion.div 
