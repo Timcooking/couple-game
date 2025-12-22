@@ -18,15 +18,15 @@ const backgroundOptions: Record<Level, {
     background: string;
 }> = {
   gentle: {
-    particleColor: 'rgba(52, 211, 153, 0.5)', // Emerald 400
-    lineColor: 'rgba(52, 211, 153, 0.1)',
+    particleColor: 'rgba(165, 180, 252, 0.6)', // Indigo 300
+    lineColor: 'rgba(165, 180, 252, 0.15)',
     particleAmount: 50,
     defaultRadius: 2,
     variantRadius: 1,
     defaultSpeed: 0.5,
     variantSpeed: 0.5,
     linkRadius: 200,
-    background: '#022c22' // Deep Emerald (Visible Green tint)
+    background: '#0f172a' // Slate 900 (Deep mysterious blue/black)
   },
   warming: {
     particleColor: 'rgba(251, 146, 60, 0.8)', // Orange 400

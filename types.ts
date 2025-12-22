@@ -24,10 +24,10 @@ export interface LevelDetail {
 export const LEVEL_DETAILS: Record<Level, LevelDetail> = {
   gentle: {
     name: '温和',
-    className: 'from-emerald-400 to-cyan-500 hover:from-emerald-500 hover:to-cyan-600',
-    flatClassName: 'bg-emerald-600 hover:bg-emerald-500',
-    borderColor: 'border-purple-400/50',
-    shadowColor: 'shadow-purple-500/40'
+    className: 'from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700',
+    flatClassName: 'bg-indigo-600 hover:bg-indigo-500',
+    borderColor: 'border-indigo-400/50',
+    shadowColor: 'shadow-indigo-500/40'
   },
   warming: {
     name: '进阶',
