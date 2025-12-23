@@ -28,6 +28,23 @@
   - 添加新题目（支持使用 `{{player1}}`, `{{player2}}`, `{{topPlayer}}`, `{{bottomPlayer}}` 占位符）。
   - **导入/导出**：支持将题库导出为 JSON 文件分享给朋友，或导入他人的题库。
 
+## 📅 更新日志 (Changelog)
+
+### v0.9 - 灵动交互 (UI Polish)
+- **独立卡牌动画**：重构了首页扇形卡牌组件。每张卡牌现在拥有独立的随机悬浮节奏，打破了僵硬的整体感。
+- **视差拖拽效果**：拖拽扇形区域时，卡牌会根据位置产生不同程度的旋转和位移，模拟真实的物理手感。
+- **交互反馈**：新增了卡牌 Hover/Touch 高亮效果，使界面更加生动。
+
+### v0.5 - AI 降临 (AI Integration)
+- **智能题库扩充**：引入 **Google Gemini API** (`gemini-2.5-flash`)。
+- **空牌堆处理**：当当前级别的卡牌耗尽时，提供两种选择：
+  1. 🔄 **重新洗牌**：继续使用现有题库。
+  2. ✨ **AI 生成**：支持输入关键词（如“厨房”、“浪漫”、“回忆”），AI 将结合当前游戏级别和玩家角色，即时生成 5 张全新的个性化挑战卡牌。
+
+### v0.1 - 基础修复 (Hotfix)
+- 修复了构建时的 TypeScript 类型错误（移除未使用的引用）。
+- 优化了项目构建配置。
+
 ## 📦 技术栈
 
 - **React 18**
@@ -35,6 +52,7 @@
 - **Vite** (构建工具)
 - **Tailwind CSS**
 - **Framer Motion**
+- **Google GenAI SDK**
 
 ## 🚀 开发与部署
 
@@ -60,11 +78,12 @@ npm run dev
    - **Framework preset**: 选择 `Vite`
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
+   - **Environment Variables**: 添加 `API_KEY` (你的 Google Gemini API Key)。
 6. 点击 **Save and Deploy**。
 
 ## 🔒 隐私说明
 
-本项目是一个纯前端应用。所有的游戏数据（题目、设置）均存储在您浏览器的 **LocalStorage** 中，不会上传到任何服务器，请放心使用。
+本项目是一个纯前端应用。所有的游戏数据（题目、设置）均存储在您浏览器的 **LocalStorage** 中。AI 生成功能仅将当前的 prompt 发送至 Google 服务器，不会存储您的个人聊天记录。
 
 ---
 *Created with love.*

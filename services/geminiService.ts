@@ -2,6 +2,12 @@
 import type { Level, Mode, Players } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
 
+declare const process: {
+  env: {
+    API_KEY: string;
+  }
+};
+
 export interface Challenge {
     text: string;
     mode: Mode;
