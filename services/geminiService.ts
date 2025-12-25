@@ -128,9 +128,10 @@ export const getPersonalizedDeck = (level: Level, players: Players, mode: Mode):
         return [];
     }
 
-    // Filter out any non-string values
+    // Filter out any non-string values AND muted cards (starting with //)
     const personalizedTexts = challengesForLevel
         .filter(text => typeof text === 'string')
+        .filter(text => !text.trim().startsWith('//'))
         .map(text => personalizeText(text, players));
 
     const deck: Challenge[] = personalizedTexts.map(text => ({ text, mode }));
@@ -245,8 +246,8 @@ export const defaultChallenges: Record<Level, Record<Mode, string[]>> = {
     truth: [
       "{{player1}}，你最欣赏 {{player2}} 身上的哪个特质？",
       "我们第一次见面时，你对我的第一印象是什么？",
-      "分享一件你觉得我们之间最浪漫的小事。",
-      "如果可以用一个词来形容我们的关系，会是什么？",
+      "// 分享一件你觉得我们之间最浪漫的小事。",
+      "// 如果可以用一个词来形容我们的关系，会是什么？",
       "{{player2}}，你手机里存的 {{player1}} 最好看的一张照片是哪张？",
       "你最想和我一起去哪个地方旅行？",
       "你认为我的哪一点最吸引你？",
@@ -255,17 +256,17 @@ export const defaultChallenges: Record<Level, Record<Mode, string[]>> = {
     dare: [
       "抱着 {{player1}} 转三圈。",
       "五分钟内，一起为对方挑一件情趣用品（眼罩，口球等...）并分享为什么。",
-      "{{player1}}，你必须对{{player2}}做一次为时30秒的表白。[TIME:30]",
-      "{{player1}}，认真地问{{player2}}，你能不能轻轻咬他的耳朵。[TIME:15]",
+      "// {{player1}}，你必须对{{player2}}做一次为时30秒的表白。[TIME:30]",
+      "// {{player1}}，认真地问{{player2}}，你能不能轻轻咬他的耳朵。[TIME:15]",
       "{{player1}}，轻柔地抚摸{{player2}}的头发，然后抓住他的脖子亲吻。[TIME:15]",
       "相互拥抱并说出对方的三个优点。",
-      "{{topPlayer}}，把{{bottomPlayer}}按在墙上，轻声对他说出你的欲望。",
+      "{{topPlayer}}，把{{bottomPlayer}}按在墙上，轻咬他的耳朵。",
       "{{player1}}，抚摸{{player2}}的脸，直视他的眼睛，告诉他你认为他有多帅。",
       "{{player1}}，吸吮{{player2}}的一根手指。",
-      "{{player1}}，你现在是一个情场高手。你有30秒来撩{{player2}}。然后交换再来一次。[TIME:30]",
+      "// {{player1}}，你现在是一个情场高手。你有30秒来撩{{player2}}。然后交换再来一次。[TIME:30]",
       "{{player1}}，拿起一杯酒，让{{player2}}喝一口，然后温柔地舔他的嘴唇。",
-      "{{topPlayer}}，接下来十分钟，你都要用“宝宝”来结束你说的所有的话。",
-      "{{bottomPlayer}}，接下来十分钟，你都要用“老公”来结束你说的所有的话。",
+      "接下来十分钟，你都要用“宝宝”来结束你说的所有的话。",
+      "{{bottomPlayer}}，相互拥抱并爱抚对方15秒。",
     ],
   },
   warming: {
@@ -287,11 +288,11 @@ export const defaultChallenges: Record<Level, Record<Mode, string[]>> = {
       "{{player1}}，坐在椅子上，身体放松。让{{player2}}蒙上你的眼睛，并亲吻你身上他想吻的任何部位！",
       "{{topPlayer}}，亲吻 {{bottomPlayer}} 身体上一个Ta之前没被亲过的地方。",
       "{{player1}}，只用舌头在{{player2}}的下腹上画图。他要猜你画的是什么。",
-      "用你的嘴唇在对方身体上留下一个吻痕。",
+      "用你的嘴唇在对方身体上留下一个只有你知道的吻痕。",
       "{{topPlayer}}，命令 {{bottomPlayer}} 做一件让ta害羞但又兴奋的事情。",
       "[TIME:600]接下来十分钟，{{bottomPlayer}} 必须称呼 {{topPlayer}} 为“主人”或自定义的尊称。",
-      "{{topPlayer}}，把{{bottomPlayer}}按在门上。你们要在1分钟内激吻并相互爱抚。[TIME:60]",
-      "{{topPlayer}}，接下来十分钟，你都要用“老婆”来结束你说的所有的话。",
+      "{{topPlayer}}，把{{bottomPlayer}}按在门上。你们要在1分钟内相互爱抚。[TIME:60]",
+      "// {{topPlayer}}，接下来十分钟，你都要用“老婆”来结束你说的所有的话。",
       "{{topPlayer}}将{{bottomPlayer}}按在墙上，抚摸对方的脸或者下巴，直视对方的眼睛，对着{{bottomPlayer}}说出一段情话。",
       "{{bottomPlayer}}跪在地上，{{topPlayer}}抚摸着他的头，直视对方的眼睛，{{topPlayer}}指定一段话让{{bottomPlayer}}读出来。",
     ],
